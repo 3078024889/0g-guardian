@@ -1,0 +1,6 @@
+web3>=6.15.0
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
+slither-analyzer>=0.10.3
+eth-account>=0.11.0
+eth-typing>=4.1.0
