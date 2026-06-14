@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0G Guardian — Onchain AI Security Audit Agent</title>
+<style>
+  :root {
+    --bg: #0D0F1A;
+    --bg2: #141627;
+    --bg3: #1C1F38;
+    --border: rgba(255,255,255,0.08);
+    --blue: #4A9EFF;
+    --green: #44FF88;
+    --yellow: #FFD700;
+    --orange: #FF8800;
+    --red: #FF4444;
+    --text: #E8E6F0;
+    --text2: #9A98B0;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,'Helvetica Neue',sans-serif; min-height:100vh; }
+
+  /* NAV */
+  nav { display:flex; align-items:center; justify-content:space-between; padding:16px 32px;
+        border-bottom:1px solid var(--border); background:rgba(13,15,26,0.95);
+        position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+  .nav-logo { font-size:20px; font-weight:700; }
+  .nav-badge { background:#1A3FFF22; color:var(--blue); border:1px solid #4A9EFF44;
+               padding:4px 12px; border-radius:20px; font-size:12px; }
+  .nav-links { display:flex; gap:24px; }
+  .nav-links a { color:var(--text2); text-decoration:none; font-size:14px; transition:color .2s; }
+  .nav-links a:hover { color:var(--text); }
+
+  /* HERO */
+  .hero { text-align:center; padding:80px 24px 60px; max-width:800px; margin:0 auto; }
+  .hero-badge { display:inline-block; background:#44FF8811; color:var(--green);
+                border:1px solid #44FF8833; padding:6px 16px; border-radius:20px;
+                font-size:12px; margin-bottom:24px; }
+  .hero h1 { font-size:clamp(32px,5vw,56px); font-weight:800; line-height:1.15;
+             letter-spacing:-1px; margin-bottom:16px; }
+  .hero h1 span { color:var(--blue); }
+  .hero p { color:var(--text2); font-size:18px; line-height:1.6; max-width:600px; margin:0 auto 32px; }
+  .hero-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn-primary { background:var(--blue); color:#fff; border:none; padding:12px 28px;
+                 border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; text-decoration:none; }
+  .btn-secondary { background:transparent; color:var(--text); border:1px solid var(--border);
+                   padding:12px 28px; border-radius:10px; font-size:15px; cursor:pointer; text-decoration:none; }
+
+  /* STATS */
+  .stats { display:flex; gap:0; max-width:700px; margin:0 auto 64px;
+           border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+  .stat { flex:1; text-align:center; padding:24px 16px; border-right:1px solid var(--border); }
+  .stat:last-child { border-right:none; }
+  .stat-num { font-size:28px; font-weight:800; color:var(--blue); }
+  .stat-label { font-size:12px; color:var(--text2); margin-top:4px; }
+
+  /* SEARCH DEMO */
+  .section { max-width:760px; margin:0 auto 48px; padding:0 16px; }
+  .section-title { font-size:22px; font-weight:700; margin-bottom:20px; }
+  .card { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:24px; }
+  .search-row { display:flex; gap:8px; margin-bottom:16px; }
+  .search-input { flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+                  border-radius:8px; padding:12px 16px; color:var(--text); font-size:14px;
+                  outline:none; font-family:monospace; }
+  .search-input:focus { border-color:var(--blue); }
+  .btn-search { background:var(--blue); color:#fff; border:none; border-radius:8px;
+                padding:12px 20px; font-weight:600; cursor:pointer; white-space:nowrap; }
+
+  /* RESULT */
+  .result { display:none; margin-top:16px; padding:20px; background:rgba(0,0,0,0.3);
+            border-radius:12px; border:1px solid rgba(255,255,255,0.06); }
+  .result.show { display:block; animation:fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  .risk-badge { display:inline-block; padding:6px 18px; border-radius:20px;
+                font-weight:700; font-size:14px; color:#000; margin-bottom:16px; }
+  .meta-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-bottom:16px; }
+  .meta-item { background:rgba(255,255,255,0.04); border-radius:8px; padding:10px 12px; }
+  .meta-label { font-size:11px; color:var(--text2); text-transform:uppercase; margin-bottom:4px; }
+  .meta-value { font-size:13px; font-weight:600; }
+  .sev-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .sev-badge { border:1px solid; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:600; }
+  .storage-box { background:#FFD70011; border:1px solid #FFD70033; border-radius:8px;
+                 padding:10px 14px; font-size:13px; display:flex; align-items:center; gap:12px; }
+  .storage-link { color:var(--yellow); text-decoration:none; font-family:monospace; }
+
+  .loading { text-align:center; padding:20px; color:var(--text2); font-size:14px; }
+  .spinner { display:inline-block; width:20px; height:20px; border:2px solid rgba(255,255,255,0.1);
+             border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite;
+             margin-right:8px; vertical-align:middle; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* PIPELINE */
+  .pipeline { display:flex; flex-direction:column; gap:0; }
+  .pipe-step { display:flex; gap:16px; align-items:flex-start; padding:16px 0;
+               border-bottom:1px solid var(--border); }
+  .pipe-step:last-child { border-bottom:none; }
+  .pipe-num { width:32px; height:32px; border-radius:50%; background:var(--blue);
+              color:#fff; display:flex; align-items:center; justify-content:center;
+              font-weight:700; font-size:13px; flex-shrink:0; }
+  .pipe-title { font-weight:600; margin-bottom:4px; }
+  .pipe-desc { color:var(--text2); font-size:13px; line-height:1.5; }
+  .pipe-tag { display:inline-block; background:rgba(74,158,255,0.1); color:var(--blue);
+              border:1px solid rgba(74,158,255,0.2); border-radius:4px;
+              padding:2px 8px; font-size:11px; margin-top:6px; }
+
+  /* 0G COMPONENTS */
+  .components { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+  .component { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .comp-dot { width:10px; height:10px; border-radius:50%; margin-bottom:10px; }
+  .comp-name { font-weight:700; font-size:14px; margin-bottom:4px; }
+  .comp-desc { color:var(--text2); font-size:12px; line-height:1.4; }
+
+  /* SAMPLE REPORTS */
+  .reports { display:flex; flex-direction:column; gap:12px; }
+  .report-card { background:var(--bg3); border:1px solid var(--border); border-radius:12px;
+                 padding:16px 20px; display:flex; align-items:center; gap:16px; cursor:pointer;
+                 transition:border-color .2s; }
+  .report-card:hover { border-color:rgba(255,255,255,0.2); }
+  .report-risk { width:48px; height:48px; border-radius:10px; display:flex; align-items:center;
+                 justify-content:center; font-weight:800; font-size:11px; flex-shrink:0; }
+  .report-addr { font-family:monospace; font-size:13px; color:var(--text2); margin-top:2px; }
+  .report-meta { color:var(--text2); font-size:12px; margin-top:4px; }
+  .report-score { margin-left:auto; text-align:right; }
+  .report-score-num { font-size:24px; font-weight:800; }
+  .report-score-label { font-size:11px; color:var(--text2); }
+
+  /* FOOTER */
+  footer { border-top:1px solid var(--border); padding:32px 24px; text-align:center;
+           color:var(--text2); font-size:13px; margin-top:32px; }
+  footer a { color:var(--blue); text-decoration:none; }
+
+  @media(max-width:600px) {
+    nav { padding:12px 16px; }
+    .nav-links { display:none; }
+    .stats { flex-direction:column; }
+    .stat { border-right:none; border-bottom:1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">🛡️ 0G Guardian</div>
+  <div class="nav-links">
+    <a href="#demo">Demo</a>
+    <a href="#pipeline">How it works</a>
+    <a href="#components">0G Stack</a>
+    <a href="https://github.com/3078024889/0g-guardian" target="_blank">GitHub</a>
+  </div>
+  <div class="nav-badge">Wave 1 · 0G Bridge</div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">⚡ Powered by 0G Chain · Compute · Storage</div>
+  <h1>Onchain AI Security<br><span>Audit Agent</span></h1>
+  <p>Autonomous AI agent that audits smart contracts in minutes — combining static analysis + LLM reasoning via 0G Compute, storing tamper-proof reports on 0G Storage, publishing immutable risk scores on 0G Chain.</p>
+  <div class="hero-btns">
+    <a class="btn-primary" href="#demo">Try Demo</a>
+    <a class="btn-secondary" href="https://github.com/3078024889/0g-guardian" target="_blank">View Code →</a>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats" style="max-width:700px;margin:0 auto 64px;">
+  <div class="stat">
+    <div class="stat-num">~2min</div>
+    <div class="stat-label">Audit Speed</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">$0</div>
+    <div class="stat-label">vs $50K Manual</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">3</div>
+    <div class="stat-label">0G Components</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">On-Chain Verifiable</div>
+  </div>
+</div>
+
+<!-- DEMO SECTION -->
+<div class="section" id="demo">
+  <div class="section-title">🔍 Live Audit Demo</div>
+  <div class="card">
+    <div style="color:var(--text2);font-size:13px;margin-bottom:12px;">Enter any contract address to simulate an audit result</div>
+    <div class="search-row">
+      <input class="search-input" id="contractInput" placeholder="0x1234...abcd (any address)" value="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" />
+      <button class="btn-search" onclick="runDemo()">Audit →</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+      <span style="font-size:12px;color:var(--text2);">Try sample:</span>
+      <span onclick="setAddr('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')" style="font-size:12px;color:var(--blue);cursor:pointer;">USDC</span>
+      <span onclick="setAddr('0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D')" style="font-size:12px;color:var(--blue);cursor:pointer;">Uniswap Router</span>
+      <span onclick="setAddr('0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45')" style="font-size:12px;color:var(--blue);cursor:pointer;">UniswapV3</span>
+    </div>
+    <div id="loadingBox" class="loading" style="display:none;">
+      <span class="spinner"></span>
+      <span id="loadingText">Fetching contract bytecode from 0G Chain...</span>
+    </div>
+    <div id="resultBox" class="result"></div>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<div class="section" id="pipeline">
+  <div class="section-title">⚙️ How 0G Guardian Works</div>
+  <div class="card">
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-num">1</div>
+        <div>
+          <div class="pipe-title">Request Submitted On-Chain</div>
+          <div class="pipe-desc">User submits contract address to <code style="color:var(--blue)">AuditRegistry.sol</code> on 0G Chain. Smart contract emits <code style="color:var(--blue)">AuditRequested</code> event.</div>
+          <div class="pipe-tag">0G Chain · EVM · Solidity 0.8.20</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">2</div>
+        <div>
+          <div class="pipe-title">Static Analysis — Slither Engine</div>
+          <div class="pipe-desc">Guardian Agent detects the event, fetches source code, runs Slither static analysis. Identifies reentrancy, access control flaws, integer overflow, unsafe delegatecall patterns.</div>
+          <div class="pipe-tag">Slither · Python · Pattern Matching</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">3</div>
+        <div>
+          <div class="pipe-title">AI Semantic Analysis — 0G Compute</div>
+          <div class="pipe-desc">Source code + static findings sent to LLM via 0G Compute Network. AI reasons about business logic flaws, economic attacks, governance manipulation — things static tools miss.</div>
+          <div class="pipe-tag">0G Compute · Qwen2.5-72B · OpenAI-compatible API</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">4</div>
+        <div>
+          <div class="pipe-title">Report Stored on 0G Storage</div>
+          <div class="pipe-desc">Full JSON audit report (with all findings, attack vectors, recommendations) uploaded to 0G Storage. Returns content-addressed merkle hash for integrity verification.</div>
+          <div class="pipe-tag">0G Storage · Content-Addressed · Permanent</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">5</div>
+        <div>
+          <div class="pipe-title">Risk Score Written to 0G Chain</div>
+          <div class="pipe-desc">AuditRecord written on-chain: risk level, numeric score (0–100), storage hash, severity counts. Immutable forever. Any dApp can call <code style="color:var(--green)">isContractSafe(address)</code>.</div>
+          <div class="pipe-tag">0G Chain · AuditRegistry.sol · Composable</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 0G COMPONENTS -->
+<div class="section" id="components">
+  <div class="section-title">🔧 0G Infrastructure Stack</div>
+  <div class="components">
+    <div class="component">
+      <div class="comp-dot" style="background:#4A9EFF"></div>
+      <div class="comp-name">0G Chain</div>
+      <div class="comp-desc">EVM-compatible L1. Hosts AuditRegistry.sol — immutable audit records queryable by any dApp</div>
+    </div>
+    <div class="component">
+      <div class="comp-dot" style="background:#44FF88"></div>
+      <div class="comp-name">0G Compute</div>
+      <div class="comp-desc">Decentralized GPU inference. Runs Qwen2.5-72B for AI semantic vulnerability reasoning</div>
+    </div>
+    <div class="component">
+      <div class="comp-dot" style="background:#FFD700"></div>
+      <div class="comp-name">0G Storage</div>
+      <div class="comp-desc">Permanent decentralized storage for full JSON audit reports. Content-addressed, tamper-proof</div>
+    </div>
+    <div class="component">
+      <div class="comp-dot" style="background:#FF8800"></div>
+      <div class="comp-name">0G Pay</div>
+      <div class="comp-desc">Pay-per-audit billing. AI agents transact autonomously using $0G tokens (Wave 2)</div>
+    </div>
+  </div>
+</div>
+
+<!-- SAMPLE AUDIT REPORTS -->
+<div class="section">
+  <div class="section-title">📋 Sample Audit Results</div>
+  <div class="reports">
+    <div class="report-card" onclick="loadSample('critical')">
+      <div class="report-risk" style="background:#FF444422;color:#FF4444;">CRIT</div>
+      <div>
+        <div style="font-weight:600">VulnerableBank.sol</div>
+        <div class="report-addr">0x1234...5678 · 0G Testnet</div>
+        <div class="report-meta">2 Critical · 1 High · 3 Medium · Reentrancy + Missing Access Control</div>
+      </div>
+      <div class="report-score">
+        <div class="report-score-num" style="color:#FF4444">95</div>
+        <div class="report-score-label">Risk Score</div>
+      </div>
+    </div>
+    <div class="report-card" onclick="loadSample('medium')">
+      <div class="report-risk" style="background:#FFD70022;color:#FFD700;">MED</div>
+      <div>
+        <div style="font-weight:600">StakingPool.sol</div>
+        <div class="report-addr">0xabcd...ef01 · 0G Testnet</div>
+        <div class="report-meta">0 Critical · 1 High · 4 Medium · Frontrunning + Oracle Risk</div>
+      </div>
+      <div class="report-score">
+        <div class="report-score-num" style="color:#FFD700">42</div>
+        <div class="report-score-label">Risk Score</div>
+      </div>
+    </div>
+    <div class="report-card" onclick="loadSample('safe')">
+      <div class="report-risk" style="background:#44FF8822;color:#44FF88;">SAFE</div>
+      <div>
+        <div style="font-weight:600">SimpleToken.sol</div>
+        <div class="report-addr">0x9999...aaaa · 0G Testnet</div>
+        <div class="report-meta">0 Critical · 0 High · 1 Medium · Well-structured ERC20</div>
+      </div>
+      <div class="report-score">
+        <div class="report-score-num" style="color:#44FF88">8</div>
+        <div class="report-score-label">Risk Score</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="font-size:16px;font-weight:700;margin-bottom:8px;">🛡️ 0G Guardian</div>
+  <div>Built for <strong>0G Bridge Buildathon 2026</strong> · Wave 1 Submission</div>
+  <div style="margin-top:8px;">
+    <a href="https://github.com/3078024889/0g-guardian" target="_blank">GitHub</a> ·
+    <a href="https://0g.ai" target="_blank">0G Labs</a> ·
+    <a href="https://app.akindo.io" target="_blank">AKINDO</a>
+  </div>
+</footer>
+
+<script>
+// ── Demo data ──────────────────────────────────────────────────────────────
+const DEMO_RESULTS = {
+  default: {
+    risk:'HIGH', score:68, color:'#FF8800',
+    findings:{CRITICAL:0,HIGH:2,MEDIUM:3,LOW:4},
+    hash:'0x3a7f9c2e...b41d88fa',
+    url:'https://indexer-storage-testnet-standard.0g.ai/file/0x3a7f9c2e',
+    duration:87,
+    findings_list:[
+      {sev:'HIGH',title:'Unprotected delegatecall to user-supplied address',cat:'arbitrary-delegatecall'},
+      {sev:'HIGH',title:'ERC20 approve front-running vulnerability',cat:'frontrunning'},
+      {sev:'MEDIUM',title:'Unchecked return value from external call',cat:'unchecked-return'},
+      {sev:'MEDIUM',title:'Missing zero-address validation in constructor',cat:'missing-zero-check'},
+      {sev:'MEDIUM',title:'Centralized owner with unrestricted mint access',cat:'centralization-risk'},
+    ]
+  },
+  usdc: {
+    risk:'LOW', score:12, color:'#44BBFF',
+    findings:{CRITICAL:0,HIGH:0,MEDIUM:1,LOW:3},
+    hash:'0xa1b2c3d4...e5f60718',
+    url:'https://indexer-storage-testnet-standard.0g.ai/file/0xa1b2c3d4',
+    duration:64,
+    findings_list:[
+      {sev:'MEDIUM',title:'Centralized blacklist control by admin',cat:'centralization-risk'},
+      {sev:'LOW',title:'Floating pragma version',cat:'pragma'},
+      {sev:'LOW',title:'Missing event emission on state change',cat:'events'},
+      {sev:'LOW',title:'Gas inefficiency in loop iteration',cat:'gas'},
+    ]
+  }
+};
+
+const SAMPLES = {
+  critical: {
+    risk:'CRITICAL', score:95, color:'#FF4444',
+    addr:'0x1234567890123456789012345678901234567890',
+    name:'VulnerableBank.sol',
+    findings:{CRITICAL:2,HIGH:1,MEDIUM:3,LOW:2},
+    hash:'0xff00aa11...cc2233dd',
+    url:'https://indexer-storage-testnet-standard.0g.ai/file/0xff00aa11',
+    findings_list:[
+      {sev:'CRITICAL',title:'Classic reentrancy — state updated after external ETH call',cat:'reentrancy-eth'},
+      {sev:'CRITICAL',title:'Missing access control on emergencyWithdraw()',cat:'suicidal'},
+      {sev:'HIGH',title:'Unchecked return value from low-level call',cat:'unchecked-send'},
+      {sev:'MEDIUM',title:'Integer underflow risk in balance accounting',cat:'integer-underflow'},
+    ]
+  },
+  medium: {
+    risk:'MEDIUM', score:42, color:'#FFD700',
+    addr:'0xabcdef0123456789abcdef0123456789abcdef01',
+    name:'StakingPool.sol',
+    findings:{CRITICAL:0,HIGH:1,MEDIUM:4,LOW:2},
+    hash:'0x55aa77bb...8899ccdd',
+    url:'https://indexer-storage-testnet-standard.0g.ai/file/0x55aa77bb',
+    findings_list:[
+      {sev:'HIGH',title:'Price oracle manipulation via flash loan attack vector',cat:'oracle-manipulation'},
+      {sev:'MEDIUM',title:'Frontrunning vulnerability in stake() function',cat:'frontrunning'},
+      {sev:'MEDIUM',title:'Reward calculation rounding error (precision loss)',cat:'precision-loss'},
+    ]
+  },
+  safe: {
+    risk:'SAFE', score:8, color:'#44FF88',
+    addr:'0x9999aaaa1111bbbb2222cccc3333dddd4444eeee',
+    name:'SimpleToken.sol',
+    findings:{CRITICAL:0,HIGH:0,MEDIUM:1,LOW:2},
+    hash:'0x00ff11ee...22dd33cc',
+    url:'https://indexer-storage-testnet-standard.0g.ai/file/0x00ff11ee',
+    findings_list:[
+      {sev:'MEDIUM',title:'Owner can pause all transfers (centralization)',cat:'centralization'},
+      {sev:'LOW',title:'Floating pragma version',cat:'pragma'},
+      {sev:'LOW',title:'Missing NatSpec documentation',cat:'documentation'},
+    ]
+  }
+};
+
+function setAddr(a) {
+  document.getElementById('contractInput').value = a;
+}
+
+const loadingMsgs = [
+  'Fetching contract bytecode from 0G Chain...',
+  'Running Slither static analysis engine...',
+  'Sending to 0G Compute (Qwen2.5-72B) for AI reasoning...',
+  'Uploading audit report to 0G Storage...',
+  'Writing risk score to AuditRegistry on 0G Chain...',
+];
+
+function runDemo() {
+  const addr = document.getElementById('contractInput').value.trim();
+  const lb = document.getElementById('loadingBox');
+  const rb = document.getElementById('resultBox');
+  rb.classList.remove('show');
+  lb.style.display = 'block';
+  let i = 0;
+  const lt = document.getElementById('loadingText');
+  lt.textContent = loadingMsgs[0];
+  const interval = setInterval(() => {
+    i++;
+    if (i < loadingMsgs.length) lt.textContent = loadingMsgs[i];
+  }, 800);
+  setTimeout(() => {
+    clearInterval(interval);
+    lb.style.display = 'none';
+    const isUSDC = addr.toLowerCase().includes('a0b86991');
+    const data = isUSDC ? DEMO_RESULTS.usdc : DEMO_RESULTS.default;
+    renderResult(rb, addr, data);
+  }, 4500);
+}
+
+function loadSample(key) {
+  const s = SAMPLES[key];
+  const rb = document.getElementById('resultBox');
+  document.getElementById('contractInput').value = s.addr;
+  document.getElementById('resultBox').classList.remove('show');
+  document.querySelector('#demo').scrollIntoView({behavior:'smooth'});
+  setTimeout(() => {
+    const data = { ...s, findings_list: s.findings_list };
+    renderResult(rb, s.addr, data);
+  }, 300);
+}
+
+function renderResult(rb, addr, d) {
+  const sevColors = {CRITICAL:'#FF4444',HIGH:'#FF8800',MEDIUM:'#FFD700',LOW:'#44BBFF',INFO:'#888'};
+  const short = addr.length > 20 ? addr.slice(0,10)+'...'+addr.slice(-8) : addr;
+  const hashShort = d.hash ? d.hash.slice(0,14)+'...' : '0x...';
+  rb.innerHTML = `
+    <div class="risk-badge" style="background:${d.color}">${d.risk} — Score: ${d.score}/100</div>
+    <div class="meta-grid">
+      <div class="meta-item"><div class="meta-label">Contract</div><div class="meta-value" style="font-family:monospace;font-size:11px">${short}</div></div>
+      <div class="meta-item"><div class="meta-label">Risk Level</div><div class="meta-value" style="color:${d.color}">${d.risk}</div></div>
+      <div class="meta-item"><div class="meta-label">Risk Score</div><div class="meta-value">${d.score}/100</div></div>
+      <div class="meta-item"><div class="meta-label">Duration</div><div class="meta-value">${d.duration||73}s</div></div>
+      <div class="meta-item"><div class="meta-label">Agent</div><div class="meta-value">v0.1.0</div></div>
+      <div class="meta-item"><div class="meta-label">Chain</div><div class="meta-value">0G Testnet</div></div>
+    </div>
+    <div class="sev-row">
+      ${Object.entries(d.findings).map(([k,v])=>`<div class="sev-badge" style="border-color:${sevColors[k]||'#888'};color:${sevColors[k]||'#888'}">${v} ${k}</div>`).join('')}
+    </div>
+    <div style="margin-bottom:12px">
+      ${(d.findings_list||[]).slice(0,4).map(f=>`
+        <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);align-items:flex-start">
+          <span style="font-size:11px;font-weight:700;color:${sevColors[f.sev]||'#888'};white-space:nowrap;padding:2px 6px;border:1px solid ${sevColors[f.sev]||'#888'};border-radius:4px">${f.sev}</span>
+          <span style="font-size:13px">${f.title}</span>
+        </div>`).join('')}
+    </div>
+    <div class="storage-box">
+      <span style="color:#888;font-size:12px">📦 Full report on 0G Storage:</span>
+      <a class="storage-link" href="${d.url}" target="_blank">${hashShort} ↗</a>
+      <span style="margin-left:auto;font-size:11px;color:#888">Immutable · Content-addressed</span>
+    </div>
+  `;
+  rb.classList.add('show');
+}
+</script>
+</body>
+</html>
